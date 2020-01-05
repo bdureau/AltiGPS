@@ -14,7 +14,8 @@ bool blinkState = true;
 bool telemetryEnable = false;
 
 long last_telem_time=0;
-#include <nmea.h>
-NMEA gps(ALL);    // GPS data connection to all sentence types
-
+//#include <nmea.h>
+//NMEA gps(ALL);    // GPS data connection to all sentence types
+#include <TinyGPS++.h>
+TinyGPSPlus gps;
 #endif

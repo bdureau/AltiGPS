@@ -134,7 +134,7 @@ void loop(void)
 void Mainloop(void)
 {
   long startTime = millis();
-  long lastWriteTime = millis()-100;
+  long lastWriteTime = millis();
   /*Serial1.print("Start main loop: ");
     Serial1.println(startTime);*/
   //read current altitude
@@ -182,21 +182,28 @@ void Mainloop(void)
     logger.setFlightTemperatureData((long) bmp.readTemperature());
     logger.setFlightPressureData((long) bmp.readPressure());
     boolean dataReady = false;
-    while(Serial3.available() > 0) {
-      if (gps.decode(Serial3.read())) {
-        dataReady =true;
-        break;
-      }
+    
+    //wait for 1/2 second
+    while ((millis() - lastWriteTime) <500) {
+      if(Serial3.available() > 0)
+        if (gps.encode(Serial3.read())) 
+          dataReady =true;
     }
+    
     if(dataReady) {
-      if (gps.gprmc_status() == 'A') {
+      /*if (gps.gprmc_status() == 'A') {
         logger.setFlightLatitudeData((long) (gps.gprmc_latitude()*1000));
         logger.setFlightLongitudeData((long) (gps.gprmc_longitude() *1000));
-      //
+      }*/
+      if (gps.location.isValid()) {
+        logger.setFlightLatitudeData((long) (gps.location.lat()*100000));
+        logger.setFlightLongitudeData((long) (gps.location.lng() *100000));
       }
+      
     }
 
-    if( (millis()- lastWriteTime)>100) {
+    if(dataReady) {
+      //Serial1.println("writting");
       currentMemaddress = logger.writeFastFlight(currentMemaddress);
       currentMemaddress++;
       lastWriteTime = millis();
