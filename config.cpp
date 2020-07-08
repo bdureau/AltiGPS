@@ -27,7 +27,8 @@ void defaultConfig()
   config.noContinuity = 0;
   config.outPut4=3;
   config.outPut4Delay=0;
- 
+  config.liftOffAltitude=10;
+  config.batteryType=0; // 0= Unknown, 1= "2S (7.4 Volts)", 2 = "9 Volts",3 = "3S (11.1 Volts)
   config.cksum=CheckSumConf(config); 
 }
 
@@ -70,7 +71,7 @@ bool writeAltiConfig( char *p ) {
   int i=0;
   while ((str = strtok_r(p, ",", &p)) != NULL) // delimiter is the comma
   {
-    Serial1.println(str);
+    SerialCom.println(str);
     switch (i)
     {
     case 1:
@@ -136,9 +137,13 @@ bool writeAltiConfig( char *p ) {
       break;  
     case 21:
       config.outPut4Delay=atol(str);
-      //SerialCom.print(F("WTF "));
       break;
-  
+   case 22:
+      config.liftOffAltitude=atoi(str);  
+      break;  
+    case 23:
+      config.batteryType=atoi(str); 
+      break;  
     }
     i++;
 

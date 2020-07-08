@@ -5,9 +5,16 @@
 #define MINOR_VERSION 0
 #define CONFIG_START 32
 #define BOARD_FIRMWARE "AltiGPS"
+#define BAT_MIN_VOLTAGE 7.0
+//Voltage divider
+#define R1 4.7
+#define R2 10
+
+#define VOLT_DIVIDER 10*(R1/(R1+R2))
 #include "Arduino.h"
 //used for writing in the microcontroler internal eeprom
 #include <EEPROM.h>
+#include <itoa.h>
 
 struct ConfigStruct {
   int unit;             //0 = meter 1 = feet
@@ -29,17 +36,39 @@ struct ConfigStruct {
   int altimeterResolution; // BMP sensor resolution
   int eepromSize;
   int noContinuity;
-  
   int outPut4;
   int outPut4Delay;
- 
-  int cksum;  
-//  int cksum;  
+  int liftOffAltitude; //Lift off Altitude in meters
+  int batteryType; // 0= Unknown, 1= "2S (7.4 Volts)", 2 = "9 Volts",3 = "3S (11.1 Volts)
+  int cksum;   
 };
+
 extern ConfigStruct config;
 extern void defaultConfig();
 extern boolean readAltiConfig();
 extern void writeConfigStruc();
 extern unsigned int CheckSumConf( ConfigStruct );
 extern bool writeAltiConfig( char *p );
+#define SerialCom Serial1
+#define SerialGPS Serial3
+#include "avdweb_VirtualDelay.h"
+
+//pyro out 1
+extern const int pyroOut1;
+extern int pinApogee;
+//pyro out 2
+extern const int pyroOut2;
+extern int pinMain;
+//pyro out 3
+extern const int pyroOut3;
+extern int pinOut3;
+//pyro out 4
+extern const int pyroOut4;
+extern int pinOut4;
+
+
+extern int pinOut2;
+extern int pinOut1;
+
+extern int continuityPins[4];
 #endif
