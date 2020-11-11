@@ -43,11 +43,22 @@ int logger_I2C_eeprom::writeFlightList()
   return FLIGHT_LIST_START + sizeof(_FlightConfig);
 }
 
+/*
+ * writeFastFlight(int eeaddress)
+ * 
+ */
 int logger_I2C_eeprom::writeFastFlight(int eeaddress){
   eep.write(eeaddress, ((byte*)&_FlightData), sizeof(_FlightData));
   return eeaddress + sizeof(_FlightData);
 }
 
+/*
+ * 
+ * getLastFlightNbr()
+ * Parse the flight index end check if the flight_start address is > 0
+ * return -1 if no flight have been recorded else return the flight number
+ * 
+ */
 int logger_I2C_eeprom::getLastFlightNbr()
 {
   int i;
@@ -61,7 +72,26 @@ int logger_I2C_eeprom::getLastFlightNbr()
   i--;
   return i;
 }
-
+/*
+ * 
+ * getLastFlightNbr()
+ * Parse the flight index end check if the flight_start address is > 0
+ * return -1 if no flight have been recorded else return the flight number
+ * 
+ */
+long logger_I2C_eeprom::getLastFlightEndAddress()
+{
+  int i;
+  for (i = 0; i < 25; i++)
+  {
+    if (_FlightConfig[i].flight_start == 0)
+    {
+      break;
+    }
+  }
+  i--;
+  return _FlightConfig[i].flight_stop;
+}
 int logger_I2C_eeprom::printFlightList()
 {
   //retrieve from the eeprom
@@ -134,7 +164,10 @@ long logger_I2C_eeprom::getFlightAltitudeData()
 {
   return _FlightData.altitude;
 }
-
+long logger_I2C_eeprom::getSizeOfFlightData()
+{
+  return sizeof(_FlightData);
+}
 void logger_I2C_eeprom::PrintFlight(int flightNbr)
 {
   long startaddress;

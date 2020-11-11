@@ -78,6 +78,8 @@ boolean out2Enable = true;
 boolean out3Enable = true;
 boolean out4Enable = true;
 
+// main loop
+boolean mainLoopEnable =true;
 
 int apogeeDelay = 0;
 int mainDelay = 0;
@@ -331,8 +333,8 @@ void Mainloop(void)
   // blink LED to indicate activity
   blinkState = !blinkState;
   digitalWrite(LED_PIN, blinkState);
- 
-  /*SendTelemetry(q1, 500);*/
+  checkBatVoltage(BAT_MIN_VOLTAGE);
+  SendTelemetry(0, 500);
   
   if (!liftOff) // && !canRecord)
     delay(10);
@@ -394,6 +396,8 @@ void MainMenu()
  * k  folowed by a number turn on or off the selected output
  * y  followed by a number turn telemetry on/off. if number is 1 then 
  *    telemetry in on else turn it off
+ * m  followed by a number turn main loop on/off. if number is 1 then
+      main loop in on else turn it off
  */
 void interpretCommandBuffer(char *commandbuffer) {
   
@@ -555,6 +559,23 @@ void interpretCommandBuffer(char *commandbuffer) {
     else {
       SerialCom.print(F("Telemetry disabled\n"));
       telemetryEnable = false;
+    }
+    SerialCom.print(F("$OK;\n"));
+  }
+  //mainloop on/off
+  else if (commandbuffer[0] == 'm')
+  {
+    if (commandbuffer[1] == '1') {
+#ifdef SERIAL_DEBUG
+      SerialCom.print(F("main Loop enabled\n"));
+#endif
+      mainLoopEnable = true;
+    }
+    else {
+#ifdef SERIAL_DEBUG
+      SerialCom.print(F("main loop disabled\n"));
+#endif
+      mainLoopEnable = false;
     }
     SerialCom.print(F("$OK;\n"));
   }
@@ -809,11 +830,15 @@ if (telemetryEnable && (millis() - lastTelemetry)> freq) {
     float temperature;
     temperature = bmp.readTemperature();
     SerialCom.print((int)temperature );
-    /*SerialCom.print(F(","));
+    SerialCom.print(F(",")); 
+    //SerialCom.print(logger.getLastFlightEndAddress()); 
+    SerialCom.print((int)(100*((float)logger.getLastFlightEndAddress()/endAddress)));
+    SerialCom.print(F(","));
+    SerialCom.print(logger.getLastFlightNbr()+1);
+    SerialCom.print(F(",")); 
     SerialCom.print((long)gps.location.lat()*100000);
     SerialCom.print(F(","));
     SerialCom.print((long) (gps.location.lng() *100000));
-    */
     SerialCom.println(F(";"));
   }
 }
