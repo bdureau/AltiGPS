@@ -12,6 +12,7 @@
 BMP085 bmp;
 bool blinkState = true;
 bool telemetryEnable = false;
+bool mainLoopEnable = true;
 
 long last_telem_time=0;
 //#include <nmea.h>

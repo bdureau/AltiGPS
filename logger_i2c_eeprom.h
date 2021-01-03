@@ -2,7 +2,7 @@
 #define _LOGGER_I2C_EEPROM_H
 
 #include <Wire.h>
-
+#include "config.h"
 #include "utils.h"
 
 #if defined(ARDUINO) && ARDUINO >= 100
@@ -68,7 +68,7 @@ public:
     
     long getFlightStart(int flightNbr);
     long getFlightStop(int flightNbr);
-    void PrintFlight(int flightNbr);
+    //void PrintFlight(int flightNbr);
     void printFlightData(int flightNbr);
     boolean CanRecord();
     int writeFastFlight(int eeaddress);

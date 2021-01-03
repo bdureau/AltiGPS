@@ -13,7 +13,7 @@
   Major changes on version 1.0
   Initial version
   TODO:
- 
+
 */
 
 //Alti GPS config lib
@@ -30,12 +30,12 @@
 //////////////////////////////////////////////////////////////////////
 //EEProm address
 logger_I2C_eeprom logger(0x50) ;
-// End address of the 512 eeprom 
+// End address of the 512 eeprom
 long endAddress = 65536;
 // current file number that you are recording
 int currentFileNbr = 0;
 
-// EEPROM start adress for the flights. 
+// EEPROM start adress for the flights.
 // Anything before that are the flights indexes
 long currentMemaddress = 200;
 boolean liftOff = false;
@@ -57,7 +57,7 @@ unsigned long initialTime = 0;
 unsigned long prevTime = 0;
 unsigned long diffTime;
 unsigned long currentTime = 0;
-long lastTelemetry =0;
+long lastTelemetry = 0;
 
 boolean mainHasFired = false;
 //nbr of measures to do so that we are sure that apogee has been reached
@@ -79,7 +79,7 @@ boolean out3Enable = true;
 boolean out4Enable = true;
 
 // main loop
-boolean mainLoopEnable =true;
+//boolean mainLoopEnable =true;
 
 int apogeeDelay = 0;
 int mainDelay = 0;
@@ -102,17 +102,33 @@ const int pinChannel3Continuity = PA6;
 const int pinChannel4Continuity = PB0;
 void assignPyroOutputs();
 
+
+
+// var for the main loop
+boolean apogeeReadyToFire = false;
+boolean mainReadyToFire = false;
+unsigned long apogeeStartTime = 0;
+unsigned long mainStartTime = 0;
+//unsigned long liftoffStartTime=0;
+boolean ignoreAltiMeasure = false;
+// boolean finishedEvent = false;
+boolean Event1Fired = false;
+boolean Event2Fired = false;
+boolean Event3Fired = false;
+boolean Event4Fired = false;
+boolean MainFiredComplete = false;
+
 /*
- * Just return the current altitude filtered of any noise
- */
+   Just return the current altitude filtered of any noise
+*/
 double ReadAltitude()
 {
   return KalmanCalc(bmp.readAltitude());
 }
 /*
- * Initial setup
- * Initialise the GPS
- * 
+   Initial setup
+   Initialise the GPS
+
 */
 #define PMTK_SET_NMEA_UPDATE_1HZ  "$PMTK220,1000*1F\r\n"
 #define PMTK_SET_NMEA_UPDATE_5HZ  "$PMTK220,200*2C\r\n"
@@ -124,7 +140,7 @@ void initAlti() {
   out3Enable = true;
   out4Enable = true;
 
-// set main altitude (if in feet convert to metrics)
+  // set main altitude (if in feet convert to metrics)
   if (config.unit == 0)
     FEET_IN_METER = 1;
   else
@@ -141,7 +157,7 @@ void initAlti() {
 
   //check which pyro are enabled
   pos = -1;
-  // The altimeter board has 4 pyro so we might as well use them 
+  // The altimeter board has 4 pyro so we might as well use them
   if (out1Enable) {
     pos++;
     continuityPins[pos] = pinChannel1Continuity;
@@ -161,38 +177,10 @@ void initAlti() {
 }
 
 /*
- *  Setup and start program
- */
+    Setup and start program
+*/
 void setup()
 {
-  Wire.begin();
-  //Init bluetooth (which is on Serial 1)
-  SerialCom.begin(38400);
-  //Init GPS serial port (Which is on Serial 3)
-  SerialGPS.begin(9600);
- 
-  SerialGPS.print(PMTK_SET_NMEA_UPDATE_5HZ);
-
-  while (!SerialCom);      // wait for Leonardo enumeration, others continue immediately
-  bmp.begin( config.altimeterResolution);
-  // init Kalman filter
-  KalmanInit();
-  // let's do some dummy altitude reading
-  // to initialise the Kalman filter
-  for (int i = 0; i < 50; i++) {
-    ReadAltitude();
-  }
-
-  long sum = 0;
-  for (int i = 0; i < 10; i++) {
-    sum += ReadAltitude(); 
-    delay(50);
-  }
-  initialAltitude = (sum / 10.0);
-
-  // configure LED for output
-  pinMode(LED_PIN, OUTPUT);
-
   boolean softConfigValid = false;
   // Read altimeter softcoded configuration
   softConfigValid = readAltiConfig();
@@ -204,7 +192,44 @@ void setup()
     defaultConfig();
     writeConfigStruc();
   }
- 
+
+  Wire.begin();
+  //Init bluetooth (which is on Serial 1)
+  SerialCom.begin(38400);
+  //Init GPS serial port (Which is on Serial 3)
+  SerialGPS.begin(9600);
+
+  SerialGPS.print(PMTK_SET_NMEA_UPDATE_5HZ);
+
+  while (!SerialCom);      // wait for Leonardo enumeration, others continue immediately
+  bmp.begin( config.altimeterResolution);
+  initAlti();
+  if (out1Enable == false) Output1Fired = true;
+  if (out2Enable == false) Output2Fired = true;
+  if (out3Enable == false) Output3Fired = true;
+  if (out4Enable == false) Output4Fired = true;
+
+
+
+  // init Kalman filter
+  KalmanInit();
+  // let's do some dummy altitude reading
+  // to initialise the Kalman filter
+  for (int i = 0; i < 50; i++) {
+    ReadAltitude();
+  }
+
+  long sum = 0;
+  for (int i = 0; i < 10; i++) {
+    sum += ReadAltitude();
+    delay(50);
+  }
+  initialAltitude = (sum / 10.0);
+  lastAltitude = 0;
+  // configure LED for output
+  pinMode(LED_PIN, OUTPUT);
+
+
 
   // Get flight
   int v_ret;
@@ -226,13 +251,43 @@ void setup()
   canRecord = logger.CanRecord();
   //canRecord = true;
   liftoffAltitude = config.liftOffAltitude;
+
+
+  //Initialise the output pin
+  pinMode(pyroOut1, OUTPUT);
+  pinMode(pyroOut2, OUTPUT);
+  pinMode(pyroOut3, OUTPUT);
+  pinMode(pyroOut4, OUTPUT);
+
+  pinMode(pinSpeaker, OUTPUT);
+
+  // pinMode(pinAltitude1, INPUT);
+  // pinMode(pinAltitude2, INPUT);
+
+  pinMode(pinChannel1Continuity , INPUT);
+  pinMode(pinChannel2Continuity , INPUT);
+  pinMode(pinChannel3Continuity , INPUT);
+  pinMode(pinChannel4Continuity , INPUT);
+
+  //Make sure that the output are turned off
+  digitalWrite(pyroOut1, LOW);
+  digitalWrite(pyroOut2, LOW);
+  digitalWrite(pyroOut3, LOW);
+  digitalWrite(pyroOut4, LOW);
+  digitalWrite(pinSpeaker, LOW);
+
+  //enable or disable continuity check
+  if (config.noContinuity == 1)
+    noContinuity = true;
+  else
+    noContinuity = false;
 }
 
 
 /*
-*
-*  MAIN PROGRAM LOOP
-*
+
+   MAIN PROGRAM LOOP
+
 */
 void loop(void)
 {
@@ -243,14 +298,14 @@ void Mainloop(void)
 {
   long startTime = millis();
   long lastWriteTime = millis();
-  
+
   //read current altitude
   currAltitude = (ReadAltitude() - initialAltitude);
   bool lift = false;
 
   if ( currAltitude > liftoffAltitude)
-      lift = true;
-  
+    lift = true;
+
 
   if ((lift && !liftOff) || (recording && !liftOff))
   {
@@ -260,8 +315,11 @@ void Mainloop(void)
     // save the time
     initialTime = millis();
     prevTime = 0;
+
+
     if (canRecord)
     {
+      //SerialCom.println(F("hello"));
       long lastFlightNbr = logger.getLastFlightNbr();
 
       if (lastFlightNbr < 0)
@@ -279,6 +337,7 @@ void Mainloop(void)
     }
     //SerialCom.println("We have a liftoff");
   }
+
   if (canRecord && liftOff)
   {
     currentTime = millis() - initialTime;
@@ -289,32 +348,207 @@ void Mainloop(void)
     logger.setFlightTemperatureData((long) bmp.readTemperature());
     logger.setFlightPressureData((long) bmp.readPressure());
     boolean dataReady = false;
-    
+
+
     //wait for 1/2 second
-    while ((millis() - lastWriteTime) <500) {
-      if(SerialGPS.available() > 0)
-        if (gps.encode(SerialGPS.read())) 
-          dataReady =true;
+    while ((millis() - lastWriteTime) < 500) {
+      if (SerialGPS.available() > 0)
+        if (gps.encode(SerialGPS.read()))
+          dataReady = true;
     }
-    
-    if(dataReady) {
+
+    if (dataReady) {
       /*if (gps.gprmc_status() == 'A') {
         logger.setFlightLatitudeData((long) (gps.gprmc_latitude()*1000));
         logger.setFlightLongitudeData((long) (gps.gprmc_longitude() *1000));
-      }*/
+        }*/
       if (gps.location.isValid()) {
-        logger.setFlightLatitudeData((long) (gps.location.lat()*100000));
-        logger.setFlightLongitudeData((long) (gps.location.lng() *100000));
+        logger.setFlightLatitudeData((long) (gps.location.lat() * 100000));
+        logger.setFlightLongitudeData((long) (gps.location.lng() * 100000));
       }
-      
+
     }
 
-    if(dataReady) {
+    if (dataReady) {
       //SerialCom.println("writting");
       currentMemaddress = logger.writeFastFlight(currentMemaddress);
       currentMemaddress++;
       lastWriteTime = millis();
     }
+
+    //////
+    SerialCom.println(timerEvent1_enable);
+    if (timerEvent1_enable && Event1Fired == false)
+    {
+      //SerialCom.println("hello1");
+      //SerialCom.println("before Event1Fired");
+      if (currentTime >= config.outPut1Delay)
+      {
+        //fire output pyroOut1
+        digitalWrite(pyroOut1, HIGH);
+        Event1Fired = true;
+        SerialCom.println("Event1Fired");
+      }
+    }
+    if (timerEvent1_enable && Event1Fired == true)
+    {
+
+      if ((currentTime - config.outPut1Delay) >= 1000 && Output1Fired == false)
+      {
+        //switch off output pyroOut1
+        digitalWrite(pyroOut1, LOW);
+        Output1Fired = true;
+      }
+    }
+    if (timerEvent2_enable && Event2Fired == false)
+    {
+      //SerialCom.println("hello2");
+      if (currentTime >= config.outPut2Delay)
+      {
+        //fire output pyroOut2
+        digitalWrite(pyroOut2, HIGH);
+        Event2Fired = true;
+      }
+    }
+    if (timerEvent2_enable && Event2Fired == true )
+    {
+      if ((currentTime - config.outPut2Delay) >= 1000 && Output2Fired == false)
+      {
+        //switch off output pyroOut2
+        digitalWrite(pyroOut2, LOW);
+        Output2Fired = true;
+      }
+    }
+    if (timerEvent3_enable && Event3Fired == false)
+    {
+      //SerialCom.println("hello3");
+      if (currentTime >= config.outPut3Delay)
+      {
+        //fire output pyroOut3
+        digitalWrite(pyroOut3, HIGH);
+        Event3Fired = true;
+      }
+    }
+    if (timerEvent3_enable && Event3Fired == true)
+    {
+      if ((currentTime - config.outPut3Delay) >= 1000 && Output3Fired == false)
+      {
+        //switch off output pyroOut3
+        digitalWrite(pyroOut3, LOW);
+        Output3Fired = true;
+      }
+    }
+
+    if (timerEvent4_enable && Event4Fired == false)
+    {
+      //SerialCom.println("hello4");
+      if (currentTime >= config.outPut4Delay)
+      {
+        //fire output pyroOut4
+        digitalWrite(pyroOut4, HIGH);
+        Event4Fired = true;
+
+      }
+    }
+    if (timerEvent4_enable && Event4Fired == true)
+    {
+      if ((currentTime - config.outPut4Delay) >= 1000 && Output4Fired == false)
+      {
+        //switch off output pyroOut4
+        digitalWrite(pyroOut4, LOW);
+        Output4Fired = true;
+
+      }
+    }
+    if (config.superSonicYesNo == 1)
+    {
+      //are we still in superSonic mode?
+      if (currentTime > 3000)
+        ignoreAltiMeasure = false;
+    }
+    if ((currAltitude < lastAltitude) && apogeeHasFired == false && ignoreAltiMeasure == false)
+    {
+      measures = measures - 1;
+      if (measures == 0)
+      {
+        //fire drogue
+        apogeeReadyToFire = true;
+        apogeeStartTime = millis();
+        apogeeAltitude = currAltitude;
+      }
+    }
+    else
+    {
+      lastAltitude = currAltitude;
+      measures = config.nbrOfMeasuresForApogee;
+    }
+    if (apogeeReadyToFire)
+    {
+      if ((millis() - apogeeStartTime) >= apogeeDelay)
+      {
+        //fire drogue
+        digitalWrite(pinApogee, HIGH);
+        setEventState(pinApogee, true);
+#ifdef SERIAL_DEBUG
+        SerialCom.println(F("Apogee has fired"));
+#endif
+        apogeeReadyToFire = false;
+        apogeeHasFired = true;
+        SendTelemetry(millis() - initialTime, 200);
+      }
+    }
+    if ((currAltitude  < mainDeployAltitude) && apogeeHasFired == true && mainHasFired == false)
+    {
+      // Deploy main chute  X meters or feet  before landing...
+      digitalWrite(pinApogee, LOW);
+#ifdef SERIAL_DEBUG
+      SerialCom.println(F("Apogee firing complete"));
+#endif
+      mainReadyToFire = true;
+#ifdef SERIAL_DEBUG
+      SerialCom.println(F("preparing main"));
+#endif
+      mainStartTime = millis();
+      //digitalWrite(pinMain, HIGH);
+      //mainHasFired=true;
+      mainAltitude = currAltitude;
+#ifdef SERIAL_DEBUG
+      SerialCom.println(F("main altitude"));
+
+      SerialCom.println(mainAltitude);
+#endif
+    }
+    if (mainReadyToFire)
+    {
+      if ((millis() - mainStartTime) >= mainDelay)
+      {
+        //fire main
+#ifdef SERIAL_DEBUG
+        SerialCom.println(F("firing main"));
+#endif
+        digitalWrite(pinMain, HIGH);
+        mainReadyToFire = false;
+        //setEventState(pinMain, true);
+        mainHasFired = true;
+        SendTelemetry(millis() - initialTime, 200);
+      }
+    }
+
+    if (mainHasFired)
+    {
+
+      if ((millis() - (mainStartTime + mainDelay)) >= 1000 && MainFiredComplete == false)
+      {
+        digitalWrite(pinMain, LOW);
+        setEventState(pinMain, true);
+        //liftOff =false;
+#ifdef SERIAL_DEBUG
+        SerialCom.println("Main fired");
+#endif
+        MainFiredComplete = true;
+      }
+    }
+    /////
   }
 
   if (((canRecord && currAltitude < 10) && liftOff && !recording && !rec) || (!recording && rec))
@@ -328,14 +562,14 @@ void Mainloop(void)
     // SerialCom.println("We have landed");
   }
 
-  
+
 
   // blink LED to indicate activity
   blinkState = !blinkState;
   digitalWrite(LED_PIN, blinkState);
   checkBatVoltage(BAT_MIN_VOLTAGE);
   SendTelemetry(0, 500);
-  
+
   if (!liftOff) // && !canRecord)
     delay(10);
 }
@@ -355,7 +589,9 @@ void MainMenu()
 
 
   while ( readVal != ';') {
-    Mainloop();
+    continuityCheckAsync();
+    if (mainLoopEnable)
+      Mainloop();
     while (SerialCom.available())
     {
       readVal = SerialCom.read();
@@ -376,31 +612,31 @@ void MainMenu()
 }
 
 /*
- * 
- * This interprets menu commands. This can be used in the commend line or
- * this is used by the Android console 
- * 
- * Commands are as folow:
- * e  erase all saved flights
- * r  followed by a number which is the flight number.
- *    This will retrieve all data for the specified flight
- * w  Start or stop recording   
- * n  Return the number of recorded flights in the EEprom
- * l  list all flights
- * c  toggle continuity on and off
- * a  get all flight data
- * b  get altimeter config
- * s  write altimeter config
- * d  reset alti config
- * h  hello. Does not do much
- * k  folowed by a number turn on or off the selected output
- * y  followed by a number turn telemetry on/off. if number is 1 then 
- *    telemetry in on else turn it off
- * m  followed by a number turn main loop on/off. if number is 1 then
+
+   This interprets menu commands. This can be used in the commend line or
+   this is used by the Android console
+
+   Commands are as folow:
+   e  erase all saved flights
+   r  followed by a number which is the flight number.
+      This will retrieve all data for the specified flight
+   w  Start or stop recording
+   n  Return the number of recorded flights in the EEprom
+   l  list all flights
+   c  toggle continuity on and off
+   a  get all flight data
+   b  get altimeter config
+   s  write altimeter config
+   d  reset alti config
+   h  hello. Does not do much
+   k  folowed by a number turn on or off the selected output
+   y  followed by a number turn telemetry on/off. if number is 1 then
+      telemetry in on else turn it off
+   m  followed by a number turn main loop on/off. if number is 1 then
       main loop in on else turn it off
- */
+*/
 void interpretCommandBuffer(char *commandbuffer) {
-  
+
   //this will erase all flight
   if (commandbuffer[0] == 'e')
   {
@@ -474,7 +710,7 @@ void interpretCommandBuffer(char *commandbuffer) {
       noContinuity = false;
       SerialCom.println(F("Continuity on \n"));
     }
-  }  
+  }
   //get all flight data
   else if (commandbuffer[0] == 'a')
   {
@@ -592,8 +828,8 @@ void interpretCommandBuffer(char *commandbuffer) {
 }
 
 /*
- * Just to assign pyro output fonctionalities
- */
+   Just to assign pyro output fonctionalities
+*/
 void assignPyroOutputs()
 {
   pinMain = -1;
@@ -726,13 +962,16 @@ void setEventState(int pyroOut, boolean state)
   }
 }
 /*
-*
-*   Send telemetry to the Android device
-*
+
+    Send telemetry to the Android device
+
 */
 void SendTelemetry(long sampleTime, int freq) {
-if (telemetryEnable && (millis() - lastTelemetry)> freq) {
-    lastTelemetry =millis();
+  char altiTelem[150] = "";
+  char temp[10] = "";
+
+  if (telemetryEnable && (millis() - lastTelemetry) > freq) {
+    lastTelemetry = millis();
     int val = 0;
     //check liftoff
     int li = 0;
@@ -751,189 +990,281 @@ if (telemetryEnable && (millis() - lastTelemetry)> freq) {
     int landed = 0;
     if ( mainHasFired && currAltitude < 10)
       landed = 1;
-    SerialCom.print(F("$telemetry,"));
-    SerialCom.print(currAltitude);
-    SerialCom.print(F(","));
-    SerialCom.print(li);
-    SerialCom.print(F(","));
-    SerialCom.print(ap);
-    SerialCom.print(F(","));
-    SerialCom.print(apogeeAltitude);
-    SerialCom.print(F(","));
-    SerialCom.print(ma);
-    SerialCom.print(F(","));
-    SerialCom.print(mainAltitude);
-    SerialCom.print(F(","));
-    SerialCom.print(landed);
-    SerialCom.print(F(","));
-    SerialCom.print(sampleTime);
-    SerialCom.print(F(","));
+    //SerialCom.print(F("$telemetry,"));
+    strcat(altiTelem, "telemetry," );
+    //SerialCom.print(currAltitude);
+    //SerialCom.print(F(","));
+    sprintf(temp, "%i,", currAltitude);
+    strcat(altiTelem, temp);
+    //SerialCom.print(li);
+    //SerialCom.print(F(","));
+    sprintf(temp, "%i,", li);
+    strcat(altiTelem, temp);
+    //SerialCom.print(ap);
+    //SerialCom.print(F(","));
+    sprintf(temp, "%i,", ap);
+    strcat(altiTelem, temp);
+    //SerialCom.print(apogeeAltitude);
+    //SerialCom.print(F(","));
+    sprintf(temp, "%i,", apogeeAltitude);
+    strcat(altiTelem, temp);
+    //SerialCom.print(ma);
+    //SerialCom.print(F(","));
+    sprintf(temp, "%i,", ma);
+    strcat(altiTelem, temp);
+    //SerialCom.print(mainAltitude);
+    //SerialCom.print(F(","));
+    sprintf(temp, "%i,", mainAltitude);
+    strcat(altiTelem, temp);
+    //SerialCom.print(landed);
+    //SerialCom.print(F(","));
+    sprintf(temp, "%i,", landed);
+    strcat(altiTelem, temp);
+    //SerialCom.print(sampleTime);
+    //SerialCom.print(F(","));
+    sprintf(temp, "%i,", sampleTime);
+    strcat(altiTelem, temp);
     if (out1Enable) {
       //check continuity
       val = digitalRead(pinChannel1Continuity);
       if (val == 0)
-        SerialCom.print(0);
+        strcat(altiTelem, "0,");
       else
-        SerialCom.print(1);
+        strcat(altiTelem, "1,");
     }
     else {
-      SerialCom.print(-1);
+      strcat(altiTelem, "-1,");
     }
-    SerialCom.print(F(","));
     if (out2Enable) {
       //check continuity
       val = digitalRead(pinChannel2Continuity);
       delay(20);
       if (val == 0)
-        SerialCom.print(0);
+        strcat(altiTelem, "0,");
       else
-        SerialCom.print(1);
+        strcat(altiTelem, "1,");
     }
     else {
-      SerialCom.print(-1);
+      strcat(altiTelem, "-1,");
     }
-    SerialCom.print(F(","));
     if (out3Enable) {
       //check continuity
       val = digitalRead(pinChannel3Continuity);
       if (val == 0)
-        SerialCom.print(0);
+        strcat(altiTelem, "0,");
       else
-        SerialCom.print(1);
+        strcat(altiTelem, "1,");
     }
     else {
-      SerialCom.print(-1);
+      strcat(altiTelem, "-1,");
     }
-
-    SerialCom.print(F(","));
     if (out4Enable) {
       //check continuity
       val = digitalRead(pinChannel4Continuity);
-      //delay(20);
       if (val == 0)
-        SerialCom.print(0);
+        strcat(altiTelem, "0,");
       else
-        SerialCom.print(1);
+        strcat(altiTelem, "1,");
     }
     else {
-      SerialCom.print(-1);
+      strcat(altiTelem, "-1,");
     }
-
-    SerialCom.print(F(","));
     pinMode(PB1, INPUT_ANALOG);
     int batVoltage = analogRead(PB1);
     float bat = VOLT_DIVIDER * ((float)(batVoltage * 3300) / (float)4096000);
-    SerialCom.print(bat);
+    sprintf(temp, "%f,", bat);
+    strcat(altiTelem, temp);
 
     // temperature
-    SerialCom.print(F(","));
     float temperature;
     temperature = bmp.readTemperature();
-    SerialCom.print((int)temperature );
-    SerialCom.print(F(",")); 
-    //SerialCom.print(logger.getLastFlightEndAddress()); 
-    SerialCom.print((int)(100*((float)logger.getLastFlightEndAddress()/endAddress)));
-    SerialCom.print(F(","));
-    SerialCom.print(logger.getLastFlightNbr()+1);
-    SerialCom.print(F(",")); 
-    SerialCom.print((long)gps.location.lat()*100000);
-    SerialCom.print(F(","));
-    SerialCom.print((long) (gps.location.lng() *100000));
-    SerialCom.println(F(";"));
+    sprintf(temp, "%i,", (int)temperature );
+    strcat(altiTelem, temp);
+
+    sprintf(temp, "%i,", (int)(100 * ((float)logger.getLastFlightEndAddress() / endAddress)) );
+    strcat(altiTelem, temp);
+    sprintf(temp, "%i,", logger.getLastFlightNbr() + 1 );
+    strcat(altiTelem, temp);
+    //SerialCom.print((long)gps.location.lat() * 100000);
+    // SerialCom.print(F(","));
+    sprintf(temp, "%l,", (long)gps.location.lat() * 100000 );
+    strcat(altiTelem, temp);
+    //SerialCom.print((long) (gps.location.lng() * 100000));
+    //SerialCom.println(F(";"));
+    sprintf(temp, "%l,", (long)gps.location.lng() * 100000 );
+    strcat(altiTelem, temp);
+
+    unsigned int chk;
+    chk = msgChk(altiTelem, sizeof(altiTelem));
+    sprintf(temp, "%i", chk);
+    strcat(altiTelem, temp);
+    strcat(altiTelem, ";\n");
+    SerialCom.print("$");
+    SerialCom.print(altiTelem);
   }
 }
 
 /*
-*
-*   Send the GPS configuration to the Android device
-*
+
+    Send the GPS configuration to the Android device
+
 */
 void SendAltiConfig() {
+
+  char altiConfig[150] = "";
+  char temp[10] = "";
   
-  bool ret= readAltiConfig();
-  if(!ret)
+  bool ret = readAltiConfig();
+  if (!ret)
     SerialCom.print(F("invalid conf"));
-  SerialCom.print(F("$alticonfig"));
-  SerialCom.print(F(","));
+  //SerialCom.print(F("$alticonfig"));
+ // SerialCom.print(F(","));
+   strcat(altiConfig, "alticonfig,");
   //Unit
-  SerialCom.print(config.unit);
-  SerialCom.print(F(","));
+  //SerialCom.print(config.unit);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.unit);
+  strcat(altiConfig, temp);
   //beepingMode
-  SerialCom.print(config.beepingMode);
-  SerialCom.print(F(","));
+  //SerialCom.print(config.beepingMode);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.beepingMode);
+  strcat(altiConfig, temp);
   //output1
-  SerialCom.print(config.outPut1);
-  SerialCom.print(F(","));
+  //SerialCom.print(config.outPut1);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.outPut1);
+  strcat(altiConfig, temp);
   //output2
-  SerialCom.print(config.outPut2);
-  SerialCom.print(F(","));
+  //SerialCom.print(config.outPut2);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.outPut2);
+  strcat(altiConfig, temp);
   //output3
-  SerialCom.print(config.outPut3);
-  SerialCom.print(F(","));
+  //SerialCom.print(config.outPut3);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.outPut3);
+  strcat(altiConfig, temp);
   //supersonicYesNo
-  SerialCom.print(config.superSonicYesNo);
-  SerialCom.print(F(","));
-  //mainAltitude
-  SerialCom.print(config.mainAltitude);
-  SerialCom.print(F(","));
+  //SerialCom.print(config.superSonicYesNo);
+  //SerialCom.print(F(","));
+   sprintf(temp, "%i,", config.superSonicYesNo);
+  strcat(altiConfig, temp);
+//mainAltitude
+  //SerialCom.print(config.mainAltitude);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.mainAltitude);
+  strcat(altiConfig, temp);
   //AltimeterName
-  SerialCom.print(F(BOARD_FIRMWARE));
-  SerialCom.print(F(","));
+  //SerialCom.print(F(BOARD_FIRMWARE));
+  //SerialCom.print(F(","));
+  //sprintf(temp, "%i,", BOARD_FIRMWARE);
+  strcat(altiConfig, BOARD_FIRMWARE);
+  strcat(altiConfig,",");
   //alti major version
-  SerialCom.print(MAJOR_VERSION);
+  // SerialCom.print(MAJOR_VERSION);
+  sprintf(temp, "%i,", MAJOR_VERSION);
+  strcat(altiConfig, temp);
   //alti minor version
-  SerialCom.print(F(","));
-  SerialCom.print(MINOR_VERSION);
-  SerialCom.print(F(","));
-  //output1 delay
-  SerialCom.print(config.outPut1Delay);
-  SerialCom.print(F(","));
+  //SerialCom.print(F(","));
+  //SerialCom.print(MINOR_VERSION);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", MINOR_VERSION);
+  strcat(altiConfig, temp);
+    //output1 delay
+  //SerialCom.print(config.outPut1Delay);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.outPut1Delay);
+  strcat(altiConfig, temp);
   //output2 delay
-  SerialCom.print(config.outPut2Delay);
-  SerialCom.print(F(","));
+  //SerialCom.print(config.outPut2Delay);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.outPut2Delay);
+  strcat(altiConfig, temp);
   //output3 delay
-  SerialCom.print(config.outPut3Delay);
-  SerialCom.print(F(","));
+  //SerialCom.print(config.outPut3Delay);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.outPut3Delay);
+  strcat(altiConfig, temp);
   //Beeping frequency
-  SerialCom.print(config.beepingFrequency);
-  SerialCom.print(F(","));
-  SerialCom.print(config.nbrOfMeasuresForApogee);
-  SerialCom.print(F(","));
-  SerialCom.print(config.endRecordAltitude);
-  SerialCom.print(F(","));
-  SerialCom.print(config.recordTemperature);
-  SerialCom.print(F(","));
-  SerialCom.print(config.superSonicDelay);
-  SerialCom.print(F(","));
-  SerialCom.print(config.connectionSpeed);
-  SerialCom.print(F(","));
-  SerialCom.print(config.altimeterResolution);
-  SerialCom.print(F(","));
-  SerialCom.print(config.eepromSize);
-  SerialCom.print(F(","));
-  SerialCom.print(config.noContinuity);
-  SerialCom.print(F(","));
+  //SerialCom.print(config.beepingFrequency);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.beepingFrequency);
+  strcat(altiConfig, temp);
+  //SerialCom.print(config.nbrOfMeasuresForApogee);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.nbrOfMeasuresForApogee);
+  strcat(altiConfig, temp);
+   //SerialCom.print(config.endRecordAltitude);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.endRecordAltitude);
+  strcat(altiConfig, temp);
+  //SerialCom.print(config.recordTemperature);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.recordTemperature);
+  strcat(altiConfig, temp);
+  //SerialCom.print(config.superSonicDelay);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.superSonicDelay);
+  strcat(altiConfig, temp);
+  //SerialCom.print(config.connectionSpeed);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%lu,", config.connectionSpeed);
+  strcat(altiConfig, temp);
+   //SerialCom.print(config.altimeterResolution);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.altimeterResolution);
+  strcat(altiConfig, temp);
+  //SerialCom.print(config.eepromSize);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.eepromSize);
+  strcat(altiConfig, temp);
+  //SerialCom.print(config.noContinuity);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.noContinuity);
+  strcat(altiConfig, temp);
   //output4
-  SerialCom.print(config.outPut4);
-  SerialCom.print(F(","));
-   //output4 delay
-  SerialCom.print(config.outPut4Delay);
-  SerialCom.print(F(";\n"));
+  //SerialCom.print(config.outPut4);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.outPut4);
+  strcat(altiConfig, temp);
+  //output4 delay
+  //SerialCom.print(config.outPut4Delay);
+  //SerialCom.print(F(";\n"));
+  sprintf(temp, "%i,", config.outPut4Delay);
+  strcat(altiConfig, temp);
+  //Lift off altitude
+  //SerialCom.print(config.liftOffAltitude);
+  //SerialCom.print(F(","));
+  sprintf(temp, "%i,", config.liftOffAltitude);
+  strcat(altiConfig, temp);
+  //Battery type
+  //SerialCom.print(config.batteryType);
+  sprintf(temp, "%i,", config.batteryType);
+  //SerialCom.print(F(";\n"));
+  strcat(altiConfig, temp);
+  unsigned int chk = 0;
+  chk = msgChk( altiConfig, sizeof(altiConfig) );
+  sprintf(temp, "%i;\n", chk);
+  strcat(altiConfig, temp);
+
+  SerialCom.print("$");
+  SerialCom.print(altiConfig);
 }
 
 /*
- * 
- * Check if the battery voltage is OK. 
- * If not warn the user so that the battery does not get
- * damaged by over discharging
- */
+
+   Check if the battery voltage is OK.
+   If not warn the user so that the battery does not get
+   damaged by over discharging
+*/
 void checkBatVoltage(float minVolt) {
 
   pinMode(PB1, INPUT_ANALOG);
   int batVoltage = analogRead(PB1);
-  
+
   float bat = VOLT_DIVIDER * ((float)(batVoltage * 3300) / (float)4096000);
-  
+
   if (bat < minVolt) {
     for (int i = 0; i < 10; i++)
     {
@@ -945,9 +1276,9 @@ void checkBatVoltage(float minVolt) {
   }
 }
 /*
- * Turn on or off one altimeter output
- * This is used to test them 
- */
+   Turn on or off one altimeter output
+   This is used to test them
+*/
 void fireOutput(int pin, boolean fire) {
   if (fire)
     digitalWrite(pin, HIGH);

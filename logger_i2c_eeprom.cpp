@@ -168,7 +168,7 @@ long logger_I2C_eeprom::getSizeOfFlightData()
 {
   return sizeof(_FlightData);
 }
-void logger_I2C_eeprom::PrintFlight(int flightNbr)
+/*void logger_I2C_eeprom::PrintFlight(int flightNbr)
 {
   long startaddress;
   long endaddress;
@@ -233,8 +233,61 @@ void logger_I2C_eeprom::printFlightData(int flightNbr)
       Serial1.println(";");
     }
   }
-}
+}*/
+void logger_I2C_eeprom::printFlightData(int flightNbr)
+{
+  int startaddress;
+  int endaddress;
+  long flight_type;
+  startaddress = getFlightStart(flightNbr);
+  endaddress = getFlightStop(flightNbr);
 
+  if (startaddress > 200)
+  {
+    int i = startaddress;
+    unsigned long currentTime = 0;
+
+    while (i < (endaddress + 1))
+    {
+      i = readFlight(i) + 1;
+      char flightData[150] = "";
+      char temp[9] = "";
+      currentTime = currentTime + getFlightTimeData();
+      //long pos[4];
+      //getFlightRocketPos(pos);
+      //Serial1.print("$" + String("data,") + String(flightNbr) + "," + String(currentTime) + "," + String(getFlightAltitudeData()) + ",");
+      strcat(flightData, "data,");
+      sprintf(temp, "%i,", flightNbr );
+      strcat(flightData, temp);
+      sprintf(temp, "%i,", currentTime );
+      strcat(flightData, temp);
+       sprintf(temp, "%i,", getFlightAltitudeData() );
+      strcat(flightData, temp);
+      //Serial1.print(_FlightData.temperature);
+      //Serial1.print(",");
+      sprintf(temp, "%i,", _FlightData.temperature );
+      strcat(flightData, temp);
+      //Serial1.print(_FlightData.pressure);
+     // Serial1.print(",");
+       sprintf(temp, "%i,", _FlightData.pressure );
+      strcat(flightData, temp);
+      //Serial1.print(_FlightData.latitude);
+      //Serial1.print(",");
+      sprintf(temp, "%i,", _FlightData.latitude );
+      strcat(flightData, temp);
+      //Serial1.print(_FlightData.longitude);
+      //Serial1.println(";");
+      sprintf(temp, "%i,", _FlightData.longitude );
+      strcat(flightData, temp);
+      unsigned int chk = msgChk(flightData, sizeof(flightData));
+      sprintf(temp, "%i", chk);
+      strcat(flightData, temp);
+      strcat(flightData, ";\n");
+      SerialCom.print("$");
+      SerialCom.print(flightData);
+    }
+  }
+}
 boolean logger_I2C_eeprom::CanRecord()
 {
   long lastFlight;
