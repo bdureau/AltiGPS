@@ -1,6 +1,6 @@
 /*
-  Rocket GPS Logger ver 1.0
-  Copyright Boris du Reau 2012-2020
+  Rocket GPS Logger ver 1.1
+  Copyright Boris du Reau 2012-2021
   Description: Model Rocket GPS flight recorder. This will allow you to record your flight
   Author: Boris du Reau
   Date: January 2020
@@ -12,6 +12,8 @@
 
   Major changes on version 1.0
   Initial version
+  Major1 changes on version 1.1
+  adding checksum
   TODO:
 
 */
@@ -1117,17 +1119,11 @@ void SendAltiConfig() {
   bool ret = readAltiConfig();
   if (!ret)
     SerialCom.print(F("invalid conf"));
-  //SerialCom.print(F("$alticonfig"));
- // SerialCom.print(F(","));
    strcat(altiConfig, "alticonfig,");
   //Unit
-  //SerialCom.print(config.unit);
-  //SerialCom.print(F(","));
   sprintf(temp, "%i,", config.unit);
   strcat(altiConfig, temp);
   //beepingMode
-  //SerialCom.print(config.beepingMode);
-  //SerialCom.print(F(","));
   sprintf(temp, "%i,", config.beepingMode);
   strcat(altiConfig, temp);
   //output1

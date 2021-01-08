@@ -80,7 +80,7 @@ bool writeAltiConfig( char *p ) {
   char *str;
   int i = 0;
   int strChk = 0;
-  char msg[100] = "";
+  char msg[120] = "";
 
   while ((str = strtok_r(p, ",", &p)) != NULL) // delimiter is the comma
   {
