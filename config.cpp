@@ -3,16 +3,11 @@ ConfigStruct config;
 //================================================================
 // read and write in the microcontroler eeprom
 //================================================================
-const int pyroOut1 = PA1;//9;
-int pinApogee = PA1;//9;
+const int pyroOut1 = PA1;
 const int pyroOut2 = PA3;
-int pinMain = PA3;
-const int pyroOut3 = PA5; //17;
-int pinOut3 = PA5;//17;
+//int pinMain = PA3;
+const int pyroOut3 = PA5; 
 const int pyroOut4 = PA7;
-int pinOut4 = PA7;
-int pinOut2 = -1;
-int pinOut1 = -1;
 int continuityPins[4];
 
 void defaultConfig()
@@ -41,6 +36,7 @@ void defaultConfig()
   config.outPut4Delay = 0;
   config.liftOffAltitude = 10;
   config.batteryType = 0; // 0= Unknown, 1= "2S (7.4 Volts)", 2 = "9 Volts",3 = "3S (11.1 Volts)
+  config.recordingTimeout = 120;
   config.cksum = CheckSumConf(config);
 }
 
@@ -180,6 +176,10 @@ bool writeAltiConfig( char *p ) {
         strcat(msg, str);
         break;
       case 24:
+        config.recordingTimeout = atoi(str);
+        strcat(msg, str);
+        break;
+      case 25:
         //our checksum
         strChk = atoi(str);
         break;
@@ -188,7 +188,7 @@ bool writeAltiConfig( char *p ) {
 
   }
   //we have a partial config
-  if (i < 23)
+  if (i < 24)
     return false;
   if (msgChk(msg, sizeof(msg)) != strChk)
     return false;

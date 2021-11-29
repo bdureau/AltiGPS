@@ -50,10 +50,11 @@ public:
     
     void begin();
     void clearFlightList();
-    int readFlight(int eeaddress);
+    unsigned long readFlight(unsigned long eeaddress);
     int readFlightList();
     int writeFlightList();
     int getLastFlightNbr();
+    bool eraseLastFlight();
     int printFlightList();
     void setFlightStartAddress(int flightNbr, long startAddress);
     void setFlightEndAddress(int flightNbr, long endAddress);
@@ -71,7 +72,7 @@ public:
     //void PrintFlight(int flightNbr);
     void printFlightData(int flightNbr);
     boolean CanRecord();
-    int writeFastFlight(int eeaddress);
+    unsigned long writeFastFlight(unsigned long eeaddress);
     long getSizeOfFlightData();
     long getLastFlightEndAddress();
     

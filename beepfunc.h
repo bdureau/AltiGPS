@@ -4,7 +4,8 @@
 #include "Arduino.h"
 extern boolean noContinuity;
 //Our drogue has been ejected i.e: apogee has been detected
-extern boolean apogeeHasFired;
+//extern boolean apogeeHasFired;
+extern boolean allApogeeFiredComplete ;
 extern boolean NoBeep;
 extern const int pinSpeaker;
 extern int beepingFrequency;
@@ -18,5 +19,6 @@ extern void shortBeep();
 extern void beepAltiVersion (int majorNbr, int minorNbr);
 extern void longBeepRepeat( int digit );
 extern void shortBeepRepeat( int digit );
+extern void beepAltitudeNew( long value);
 extern void continuityCheckAsync();
 #endif
