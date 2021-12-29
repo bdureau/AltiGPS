@@ -295,6 +295,8 @@ void setup()
   }
   canRecord = logger.CanRecord();
   //canRecord = true;
+  if (!canRecord)
+    SerialCom.println("Cannot record");
 }
 
 /*
@@ -432,7 +434,7 @@ void SendTelemetry(long sampleTime, int freq) {
     //sprintf(temp, "%f,", bat);
     dtostrf(bat, 4, 2, temp);
     strcat(altiTelem, temp);
-    strcat(altiTelem, temp);
+    strcat(altiTelem, ",");
 
     // temperature
     float temperature;
@@ -445,10 +447,14 @@ void SendTelemetry(long sampleTime, int freq) {
     sprintf(temp, "%i,", logger.getLastFlightNbr() + 1 );
     strcat(altiTelem, temp);
 
-    sprintf(temp, "%l,", (long)gps.location.lat() * 100000 );
+ //drogueFiredAltitude
+    sprintf(temp, "%i,", drogueFiredAltitude);
     strcat(altiTelem, temp);
 
-    sprintf(temp, "%l,", (long)gps.location.lng() * 100000 );
+    sprintf(temp, "%i,", (int)gps.location.lat() * 100000 );
+    strcat(altiTelem, temp);
+
+    sprintf(temp, "%i,", (int)gps.location.lng() * 100000 );
     strcat(altiTelem, temp);
 
     unsigned int chk;
@@ -486,7 +492,7 @@ int currentVelocity(long prevTime, long curTime, int prevAltitude, int curAltitu
 void record() {
   unsigned long currentTime;
   unsigned long diffTime;
-  unsigned long prevTime = 0;
+  unsigned long prevTime = millis();
   long lastWriteTime = millis();
   char readVal = ' ';
   int i = 0;
@@ -517,7 +523,7 @@ void record() {
     //Save start address
     logger.setFlightStartAddress (currentFileNbr, currentMemaddress);
   }
-  while (record) {
+  while (recording) {
     boolean dataReady = false;
     currAltitude = (ReadAltitude() - initialAltitude);
 
@@ -546,7 +552,7 @@ void record() {
         interpretCommandBuffer(commandbuffer);
       }
     }
-    if (canRecord && dataReady)
+    if (canRecord)
     {
       logger.setFlightTimeData( diffTime);
       logger.setFlightAltitudeData(currAltitude);
@@ -580,26 +586,32 @@ void record() {
     logger.writeFlightList();
   }
 }
+
+//================================================================
+// Function:  recordAltitude()
+// called for normal recording
+//================================================================
 void recordAltitude()
 {
   ResetGlobalVar();
+  long lastWriteTime = millis();
 
   boolean OutputFiredComplete[4] = {false, false, false, false};
   int OutputDelay[4] = {0, 0, 0, 0};
   OutputDelay[0] = config.outPut1Delay;
   OutputDelay[1] = config.outPut2Delay;
   OutputDelay[2] = config.outPut3Delay;
-#ifdef ALTIMULTISTM32
+//#ifdef ALTIMULTISTM32
   OutputDelay[3] = config.outPut4Delay;
-#endif
+//#endif
   // 0 = main 1 = drogue 2 = timer 4 = landing 5 = liftoff 3 = disable 6 = altitude
   int OutputType[4] = {3, 3, 3, 3};
   OutputType[0] = config.outPut1;
   OutputType[1] = config.outPut2;
   OutputType[2] = config.outPut3;
-#ifdef ALTIMULTISTM32
+//#ifdef ALTIMULTISTM32
   OutputType[3] = config.outPut4;
-#endif
+//#endif
   int OutputPins[4] = { -1, -1, -1, -1};
   if (config.outPut1 != 3)
     OutputPins[0] = pyroOut1;
@@ -607,10 +619,10 @@ void recordAltitude()
     OutputPins[1] = pyroOut2;
   if (config.outPut3 != 3)
     OutputPins[2] = pyroOut3;
-#ifdef ALTIMULTISTM32
+//#ifdef ALTIMULTISTM32
   if (config.outPut4 != 3)
     OutputPins[3] = pyroOut4;
-#endif
+//#endif
 
 
 
@@ -632,18 +644,18 @@ void recordAltitude()
   if (config.outPut1 == 3) Output1Fired = true;
   if (config.outPut2 == 3) Output2Fired = true;
   if (config.outPut3 == 3) Output3Fired = true;
-#ifdef NBR_PYRO_OUT4
+//#ifdef NBR_PYRO_OUT4
   if (config.outPut4 == 3) Output4Fired = true;
-#endif
+//#endif
 
 #ifdef SERIAL_DEBUG
   SerialCom.println(F("Config delay:"));
   SerialCom.println(config.outPut1Delay);
   SerialCom.println(config.outPut2Delay);
   SerialCom.println(config.outPut3Delay);
-#ifdef NBR_PYRO_OUT4
+//#ifdef NBR_PYRO_OUT4
   SerialCom.println(config.outPut4Delay);
-#endif
+//#endif
 
 #endif
 
@@ -789,6 +801,20 @@ void recordAltitude()
         }
         SendTelemetry(millis() - initialTime, 200);
       }
+      boolean dataReady = false;
+      //wait for 1/2 second
+      while ((millis() - lastWriteTime) < 200) {
+        if (SerialGPS.available() > 0)
+          if (gps.encode(SerialGPS.read()))
+            dataReady = true;
+      }
+
+      if (dataReady) {
+        if (gps.location.isValid()) {
+          logger.setFlightLatitudeData((long) (gps.location.lat() * 100000));
+          logger.setFlightLongitudeData((long) (gps.location.lng() * 100000));
+        }
+      }
       if (canRecord)
       {
         logger.setFlightTimeData( diffTime);
@@ -803,10 +829,11 @@ void recordAltitude()
         } else {
           currentMemaddress = logger.writeFastFlight(currentMemaddress);
           currentMemaddress++;
+          lastWriteTime = millis();
         }
         delay(50);
-
       }
+      
       if (config.superSonicYesNo == 1)
       {
         //are we still in superSonic mode?
@@ -1050,6 +1077,8 @@ void Mainloop(void)
   if ((lift && !liftOff) || (recording && !liftOff))
   {
     liftOff = true;
+    //rocketLanded = false;
+    //rocketApogee = false;
     if (recording)
       rec = true;
     // save the time
@@ -1115,13 +1144,24 @@ void Mainloop(void)
 
     }
 
-    if (dataReady) {
-      //SerialCom.println("writting");
-      currentMemaddress = logger.writeFastFlight(currentMemaddress);
-      currentMemaddress++;
-      lastWriteTime = millis();
-    }
+    /* if (dataReady) {
+       //SerialCom.println("writting");
+       currentMemaddress = logger.writeFastFlight(currentMemaddress);
+       currentMemaddress++;
+       lastWriteTime = millis();
+      }*/
 
+    if (dataReady) {
+      if ( (currentMemaddress + logger.getSizeOfFlightData())  > endAddress) {
+        //flight is full let save it
+        //save end address
+        logger.setFlightEndAddress (currentFileNbr, currentMemaddress - 1);
+        canRecord = false;
+      } else {
+        currentMemaddress = logger.writeFastFlight(currentMemaddress);
+        currentMemaddress++;
+      }
+    }
     if (!liftOffHasFired && !liftOffReadyToFire) {
       liftOffReadyToFire = true;
       liftOffStartTime = millis();
@@ -1337,10 +1377,10 @@ void MainMenu()
   char readVal = ' ';
   int i = 0;
 
-  char commandbuffer[300];
+  char commandbuffer[300] = "";
 
 
-  /*while ( readVal != ';') {
+ /* while ( readVal != ';') {
     continuityCheckAsync();
     if (mainLoopEnable)
       Mainloop();
@@ -1355,15 +1395,18 @@ void MainMenu()
       else
       {
         commandbuffer[i++] = '\0';
+        resetFlight();
         break;
       }
     }
-    }
+  }
 
-    interpretCommandBuffer(commandbuffer);*/
+  interpretCommandBuffer(commandbuffer);
+  for (int i = 0; i < sizeof(commandbuffer); i++)
+    commandbuffer[i] = '\0';*/
 
   while ( readVal != ';')
-  {
+    {
     if (!FastReading)
     {
       currAltitude = (ReadAltitude() - initialAltitude);
@@ -1376,9 +1419,12 @@ void MainMenu()
         SendTelemetry(0, 500);
         checkBatVoltage(BAT_MIN_VOLTAGE);
       }
-      else
+      else if ( currAltitude > liftoffAltitude)
       {
         recordAltitude();
+      }
+      else if (recording) {
+        record();
       }
       long savedTime = millis();
       while (allApogeeFiredComplete  && allMainFiredComplete )
@@ -1436,8 +1482,8 @@ void MainMenu()
         break;
       }
     }
-  }
-  interpretCommandBuffer(commandbuffer);
+    }
+    interpretCommandBuffer(commandbuffer);
 }
 
 /*
@@ -1513,11 +1559,18 @@ void interpretCommandBuffer(char *commandbuffer) {
   //Number of flight
   else if (commandbuffer[0] == 'n')
   {
+    char flightData[30] = "";
+    char temp[9] = "";
     SerialCom.print(F("$start;\n"));
-    SerialCom.print(F("$nbrOfFlight,"));
-    logger.readFlightList();
-    SerialCom.print(logger.getLastFlightNbr());
-    SerialCom.print(";\n");
+    strcat(flightData, "nbrOfFlight,");
+    sprintf(temp, "%i,", logger.getLastFlightNbr() + 1 );
+    strcat(flightData, temp);
+    unsigned int chk = msgChk(flightData, sizeof(flightData));
+    sprintf(temp, "%i", chk);
+    strcat(flightData, temp);
+    strcat(flightData, ";\n");
+    SerialCom.print("$");
+    SerialCom.print(flightData);
     SerialCom.print(F("$end;\n"));
   }
   //list all flights
@@ -1566,8 +1619,11 @@ void interpretCommandBuffer(char *commandbuffer) {
   //write altimeter config
   else if (commandbuffer[0] == 's')
   {
-    if (writeAltiConfig(commandbuffer))
+    if (writeAltiConfig(commandbuffer)){
       SerialCom.print(F("$OK;\n"));
+      readAltiConfig();
+      initAlti();
+    }
     else
       SerialCom.print(F("$KO;\n"));
   }
