@@ -1,6 +1,6 @@
 /*
   Rocket GPS Logger ver 1.3
-  Copyright Boris du Reau 2012-2021
+  Copyright Boris du Reau 2012-2022
   Description: Model Rocket GPS flight recorder. This will allow you to record your flight
   Author: Boris du Reau
   Date: January 2020
@@ -48,6 +48,7 @@ bool canRecord = true;
 boolean exitRecording = false;
 bool recording = false;
 bool rec = false;
+bool GpsRawEnable = false;
 
 //ground level altitude
 long initialAltitude;
@@ -447,16 +448,42 @@ void SendTelemetry(long sampleTime, int freq) {
     sprintf(temp, "%i,", logger.getLastFlightNbr() + 1 );
     strcat(altiTelem, temp);
 
- //drogueFiredAltitude
+    //drogueFiredAltitude
     sprintf(temp, "%i,", drogueFiredAltitude);
     strcat(altiTelem, temp);
 
-    sprintf(temp, "%i,", (int)gps.location.lat() * 100000 );
+    //gps latitude
+    sprintf(temp, "%i,", (int)(gps.location.lat() * 100000) );
     strcat(altiTelem, temp);
 
-    sprintf(temp, "%i,", (int)gps.location.lng() * 100000 );
+    //gps longitude
+    sprintf(temp, "%i,", (int)(gps.location.lng() * 100000) );
     strcat(altiTelem, temp);
 
+    //number of satellites
+    sprintf(temp, "%i,", (int)gps.satellites.value());
+    strcat(altiTelem, temp);
+
+    //hdop
+    sprintf(temp, "%i,", (int)gps.hdop.value());
+    strcat(altiTelem, temp);
+
+    //location age
+    sprintf(temp, "%i,", (int)gps.location.age());
+    strcat(altiTelem, temp);
+
+    //altitude 
+    sprintf(temp, "%i,", (int)gps.altitude.meters());
+    strcat(altiTelem, temp);
+
+    //speed
+    sprintf(temp, "%i,", (int)gps.speed.kmph());
+    strcat(altiTelem, temp);
+
+    //time for satelitte acquisition
+    sprintf(temp, "%i,", 0);
+    strcat(altiTelem, temp);
+    
     unsigned int chk;
     chk = msgChk(altiTelem, sizeof(altiTelem));
     sprintf(temp, "%i", chk);
@@ -1416,8 +1443,17 @@ void MainMenu()
       {
         //continuityCheckNew();
         continuityCheckAsync();
+        long savedTime = millis();
+        boolean dataReady =false;
+        while ((millis() - savedTime) < 100) {
+        if (SerialGPS.available() > 0)
+          if (gps.encode(SerialGPS.read()))
+            dataReady = true;
+        }
         SendTelemetry(0, 500);
         checkBatVoltage(BAT_MIN_VOLTAGE);
+       
+        SendGPSTram();
       }
       else if ( currAltitude > liftoffAltitude)
       {
@@ -1492,23 +1528,27 @@ void MainMenu()
    this is used by the Android console
 
    Commands are as folow:
-   e  erase all saved flights
-   r  followed by a number which is the flight number.
-      This will retrieve all data for the specified flight
-   w  Start or stop recording
-   n  Return the number of recorded flights in the EEprom
-   l  list all flights
-   c  toggle continuity on and off
    a  get all flight data
    b  get altimeter config
-   s  write altimeter config
+   c  toggle continuity on and off
    d  reset alti config
+   e  erase all saved flights
    h  hello. Does not do much
    k  folowed by a number turn on or off the selected output
-   y  followed by a number turn telemetry on/off. if number is 1 then
-      telemetry in on else turn it off
+   l  list all flights
    m  followed by a number turn main loop on/off. if number is 1 then
       main loop in on else turn it off
+   n  Return the number of recorded flights in the EEprom
+   o  send test tram   
+   r  followed by a number which is the flight number.
+      This will retrieve all data for the specified flight
+   s  write altimeter config    
+   w  Start or stop recording
+   x  delete last curve  
+   y  followed by a number turn telemetry on/off. if number is 1 then
+      telemetry in on else turn it off
+   z  send gps raw data
+   
 */
 void interpretCommandBuffer(char *commandbuffer) {
 
@@ -1712,6 +1752,19 @@ void interpretCommandBuffer(char *commandbuffer) {
     sendTestTram();
     SerialCom.print(F("$end;\n"));
   }
+  //gps rw data on off
+  else if (commandbuffer[0] == 'z')
+  {
+    if (commandbuffer[1] == '1') {
+      SerialCom.print(F("GPS raw enabled\n"));
+      GpsRawEnable = true;
+    }
+    else {
+      SerialCom.print(F("GPS raw disabled\n"));
+      GpsRawEnable = false;
+    }
+    SerialCom.print(F("$OK;\n"));
+  }
   // empty command
   else if (commandbuffer[0] == ' ')
   {
@@ -1911,4 +1964,15 @@ void resetFlight() {
     currentFileNbr = lastFlightNbr + 1;
   }
   canRecord = logger.CanRecord();
+}
+void SendGPSTram() {
+  unsigned long ms = 100;
+  unsigned long start = millis();
+  if (GpsRawEnable) {
+    do 
+    {
+      while (SerialGPS.available())
+        SerialCom.print(SerialGPS.read());
+    } while (millis() - start < ms);
+  }
 }
