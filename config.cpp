@@ -40,17 +40,6 @@ void defaultConfig()
   config.cksum = CheckSumConf(config);
 }
 
-unsigned int CheckSumConf( ConfigStruct cnf)
-{
-  int i;
-  unsigned int chk = 0;
-
-  for (i = 0; i < (sizeof(cnf) - sizeof(int)); i++)
-    chk += *((char*)&cnf + i);
-
-  return chk;
-}
-
 bool readAltiConfig() {
   //set the config to default values so that if any have not been configured we can use the default ones
   defaultConfig();
@@ -71,12 +60,12 @@ bool readAltiConfig() {
   write the config received by the console
 
 */
-bool writeAltiConfig( char *p ) {
+/*bool writeAltiConfig( char *p ) {
 
   char *str;
   int i = 0;
   int strChk = 0;
-  char msg[120] = "";
+  char msg[100] = "";
 
   while ((str = strtok_r(p, ",", &p)) != NULL) // delimiter is the comma
   {
@@ -190,6 +179,7 @@ bool writeAltiConfig( char *p ) {
   //we have a partial config
   if (i < 24)
     return false;
+    
   if (msgChk(msg, sizeof(msg)) != strChk)
     return false;
   // add checksum
@@ -197,14 +187,147 @@ bool writeAltiConfig( char *p ) {
 
   writeConfigStruc();
   return true;
-}
+}*/
 
+bool writeAltiConfigV2( char *p ) {
+
+  char *str;
+  int i = 0;
+  int command =0;
+  long commandVal =0;
+  int strChk = 0;
+  char msg[100] = "";
+
+  while ((str = strtok_r(p, ",", &p)) != NULL) // delimiter is the comma
+  {
+    //SerialCom.println(str);
+    if (i == 1) {
+      command = atoi(str);
+      strcat(msg, str);
+    }
+    if (i == 2) {
+      commandVal =  atol(str);
+      strcat(msg, str);
+    }
+    if (i == 3) {
+      strChk  =  atoi(str);  
+    }
+    i++;
+
+  }
+    //we have a partial config
+  if (i < 4)
+    return false;
+  //checksum is ivalid ? 
+  if (msgChk(msg, sizeof(msg)) != strChk)
+    return false;  
+    
+  switch (command)
+    {
+      case 1:
+        config.unit = (int) commandVal;
+        break;
+      case 2:
+        config.beepingMode = (int) commandVal;
+        break;
+      case 3:
+        config.outPut1 = (int) commandVal;
+        break;
+      case 4:
+        config.outPut2 = (int) commandVal;
+        break;
+      case 5:
+        config.outPut3 = (int) commandVal;
+        break;
+      case 6:
+        config.mainAltitude = (int) commandVal;
+        break;
+      case 7:
+        config.superSonicYesNo = (int) commandVal;
+        break;
+      case 8:
+        config.outPut1Delay = (int) commandVal;
+        break;
+      case 9:
+        config.outPut2Delay = (int) commandVal;
+        break;
+      case 10:
+        config.outPut3Delay = (int) commandVal;
+        break;
+      case 11:
+        config.beepingFrequency = (int) commandVal;
+        break;
+      case 12:
+        config.nbrOfMeasuresForApogee = (int) commandVal;
+        break;
+      case 13:
+        config.endRecordAltitude = (int) commandVal;
+        break;
+      case 14:
+        config.recordTemperature = (int) commandVal;
+        break;
+      case 15:
+        config.superSonicDelay = (int) commandVal;
+        break;
+      case 16:
+        config.connectionSpeed = commandVal;
+        break;
+      case 17:
+        config.altimeterResolution = (int) commandVal;
+        break;
+      case 18:
+        config.eepromSize = (int) commandVal;
+        break;
+      case 19:
+        config.noContinuity = (int) commandVal;
+        break;
+      case 20:
+        config.outPut4 = (int) commandVal;
+        break;
+      case 21:
+        config.outPut4Delay = (int) commandVal;
+        break;
+      case 22:
+        config.liftOffAltitude = (int) commandVal;
+        break;
+      case 23:
+        config.batteryType = (int) commandVal;
+        break;
+      case 24:
+        config.recordingTimeout = (int) commandVal;
+        break;
+    }
+
+  // add checksum
+  config.cksum = CheckSumConf(config);
+
+  return true;
+}
+/*
+
+   Write config structure to the EEPROM
+
+*/
 void writeConfigStruc()
 {
   int i;
   for ( i = 0; i < sizeof(config); i++ ) {
     EEPROM.write(CONFIG_START + i, *((char*)&config + i));
   }
+}
+
+/*
+   Calculate Checksum for the config
+*/
+unsigned int CheckSumConf( ConfigStruct cnf)
+{
+  int i;
+  unsigned int chk = 0;
+
+  for (i = 0; i < (sizeof(cnf) - sizeof(int)); i++)
+    chk += *((char*)&cnf + i);
+
+  return chk;
 }
 
 unsigned int msgChk( char * buffer, long length ) {

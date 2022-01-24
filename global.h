@@ -7,14 +7,15 @@
 #include <I2Cdev.h>
 
 #include <Wire.h>
-#include <BMP085_stm32.h>
+
+#include "Bear_BMP085.h"
 
 BMP085 bmp;
-bool blinkState = true;
+//bool blinkState = true;
 //bool telemetryEnable = false;
 bool mainLoopEnable = true;
 
-long last_telem_time=0;
+//long last_telem_time=0;
 //#include <nmea.h>
 //NMEA gps(ALL);    // GPS data connection to all sentence types
 #include <TinyGPS++.h>

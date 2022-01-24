@@ -11,7 +11,6 @@ void logger_I2C_eeprom::begin()
 {
   Wire.begin();
   //initialize Flight structure
-
 }
 
 void logger_I2C_eeprom::clearFlightList()

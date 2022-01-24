@@ -50,10 +50,10 @@ extern bool readAltiConfig();
 extern void writeConfigStruc();
 extern unsigned int CheckSumConf( ConfigStruct );
 extern unsigned int msgChk( char * buffer, long length );
-extern bool writeAltiConfig( char *p );
+//extern bool writeAltiConfig( char *p );
+extern bool writeAltiConfigV2( char *p );
 #define SerialCom Serial1
 #define SerialGPS Serial3
-//#include "avdweb_VirtualDelay.h"
 
 //pyro out 1
 extern const int pyroOut1;
