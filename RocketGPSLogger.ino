@@ -590,6 +590,9 @@ void record() {
       if (gps.location.isValid()) {
         logger.setFlightLatitudeData((long) (gps.location.lat() * 100000));
         logger.setFlightLongitudeData((long) (gps.location.lng() * 100000));
+      } else {
+        logger.setFlightLatitudeData((long) (0));
+        logger.setFlightLatitudeData((long) (0));
       }
       if ( (currentMemaddress + logger.getSizeOfFlightData())  > /*endAddress*/ 65536) {
         //flight is full let's save it
@@ -847,6 +850,9 @@ void recordAltitude()
         if (gps.location.isValid()) {
           logger.setFlightLatitudeData((long) (gps.location.lat() * 100000));
           logger.setFlightLongitudeData((long) (gps.location.lng() * 100000));
+        } else {
+          logger.setFlightLatitudeData((long) (0));
+          logger.setFlightLatitudeData((long) (0));
         }
       }
       if (canRecord)

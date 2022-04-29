@@ -231,6 +231,7 @@ void logger_I2C_eeprom::printFlightData(int flightNbr)
       strcat(flightData, ";\n");
       SerialCom.print("$");
       SerialCom.print(flightData);
+      delay(10);
     }
   }
 }
