@@ -25,6 +25,7 @@ struct FlightDataStruct {
   long altitude;
   long temperature;
   long pressure;
+  long voltage;
   long latitude;
   long longitude;
  
@@ -64,6 +65,7 @@ public:
     long getFlightAltitudeData();
     void setFlightPressureData( long pressure);
     void setFlightTemperatureData( long temperature);
+    void setFlightVoltageData(long voltage);
     void setFlightLatitudeData( long latitude);
     void setFlightLongitudeData( long longitude);
     

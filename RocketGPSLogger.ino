@@ -12,13 +12,15 @@
 
   Major changes on version 1.0
   Initial version
-  Major1 changes on version 1.1
+  Major changes on version 1.1
   adding checksum
-  Major1 changes on version 1.2
+  Major changes on version 1.2
   Code review so that is compatible with the other altimeters
   TODO:
-  Major1 changes on version 1.3
+  Major changes on version 1.3
   Code review for compatibility
+  Major changes on version 1.4
+  Adding voltage recording
 */
 
 //Alti GPS config lib
@@ -587,6 +589,8 @@ void record() {
       logger.setFlightAltitudeData(currAltitude);
       logger.setFlightTemperatureData((long) bmp.readTemperature());
       logger.setFlightPressureData((long) bmp.readPressure());
+      float bat = VOLT_DIVIDER * ((float)(analogRead(PB1) * 3300) / (float)4096000);
+      logger.setFlightVoltageData((long) 100 * bat); 
       if (gps.location.isValid()) {
         logger.setFlightLatitudeData((long) (gps.location.lat() * 100000));
         logger.setFlightLongitudeData((long) (gps.location.lng() * 100000));
@@ -594,6 +598,7 @@ void record() {
         logger.setFlightLatitudeData((long) (0));
         logger.setFlightLatitudeData((long) (0));
       }
+      
       if ( (currentMemaddress + logger.getSizeOfFlightData())  > /*endAddress*/ 65536) {
         //flight is full let's save it
         //save end address
@@ -860,7 +865,8 @@ void recordAltitude()
         logger.setFlightTimeData( diffTime);
         logger.setFlightAltitudeData(currAltitude);
         logger.setFlightTemperatureData((long) bmp.readTemperature());
-
+        float bat = VOLT_DIVIDER * ((float)(analogRead(PB1) * 3300) / (float)4096000);
+        logger.setFlightVoltageData((long) 100 * bat); 
         if ( (currentMemaddress + logger.getSizeOfFlightData())  > /*endAddress*/ 65536) {
           //flight is full let's save it
           //save end address

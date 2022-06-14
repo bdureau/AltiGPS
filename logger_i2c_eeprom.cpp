@@ -156,7 +156,9 @@ void logger_I2C_eeprom::setFlightTemperatureData( long temperature) {
 void logger_I2C_eeprom::setFlightPressureData( long pressure) {
   _FlightData.pressure = pressure;
 }
-
+void logger_I2C_eeprom::setFlightVoltageData( long voltage) {
+  _FlightData.voltage = voltage;
+}
 void logger_I2C_eeprom::setFlightLatitudeData( long latitude) {
   _FlightData.latitude = latitude;
 }

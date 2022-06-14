@@ -2,7 +2,7 @@
 #define _CONFIG_H
 
 #define MAJOR_VERSION 1
-#define MINOR_VERSION 3
+#define MINOR_VERSION 4
 #define CONFIG_START 32
 #define BOARD_FIRMWARE "AltiGPS"
 #define BAT_MIN_VOLTAGE 7.0
