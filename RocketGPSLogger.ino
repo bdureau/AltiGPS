@@ -21,6 +21,8 @@
   Code review for compatibility
   Major changes on version 1.4
   Adding voltage recording
+  Major changes on version 1.5
+  Compatibility with the latest console app
 */
 
 //Alti GPS config lib
