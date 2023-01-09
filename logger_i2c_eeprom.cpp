@@ -207,7 +207,7 @@ void logger_I2C_eeprom::printFlightData(int flightNbr)
     {
       i = readFlight(i) + 1;
       char flightData[150] = "";
-      char temp[9] = "";
+      char temp[20] = "";
       currentTime = currentTime + getFlightTimeData();
       strcat(flightData, "data,");
       sprintf(temp, "%i,", flightNbr );
@@ -216,15 +216,14 @@ void logger_I2C_eeprom::printFlightData(int flightNbr)
       strcat(flightData, temp);
       sprintf(temp, "%i,", getFlightAltitudeData() );
       strcat(flightData, temp);
-
       sprintf(temp, "%i,", _FlightData.temperature );
       strcat(flightData, temp);
-
       sprintf(temp, "%i,", _FlightData.pressure );
+      strcat(flightData, temp);
+      sprintf(temp, "%i,", _FlightData.voltage );
       strcat(flightData, temp);
       sprintf(temp, "%i,", _FlightData.latitude );
       strcat(flightData, temp);
-
       sprintf(temp, "%i,", _FlightData.longitude );
       strcat(flightData, temp);
       unsigned int chk = msgChk(flightData, sizeof(flightData));

@@ -220,6 +220,7 @@ void setup()
   SerialCom.begin(38400);
   //software pull up so that all bluetooth modules work!!!
   pinMode(PB11, INPUT_PULLUP);
+  
 
   //Init GPS serial port (Which is on Serial 3)
   SerialGPS.begin(9600);
@@ -404,7 +405,7 @@ void SendTelemetry(long sampleTime, int freq) {
     if (config.outPut2 != 3) {
       //check continuity
       val = digitalRead(pinChannel2Continuity);
-      delay(20);
+      //delay(20);
       if (val == 0)
         strcat(altiTelem, "0,");
       else
@@ -520,7 +521,7 @@ int currentVelocity(long prevTime, long curTime, int prevAltitude, int curAltitu
 
 //================================================================
 // Function:  recordAltitude()
-// called for normal recording
+// called for manual recording
 //================================================================
 void record() {
   unsigned long currentTime;
@@ -531,14 +532,10 @@ void record() {
   int i = 0;
 
   char commandbuffer[100];
-  //unsigned long initialTime = 0;
+  
   // save the time
   initialTime = millis();
-  /*if (canRecord)
-    {
-    //Save start address
-    logger.setFlightStartAddress (currentFileNbr, currentMemaddress);
-    }*/
+  
   if (canRecord)
   {
     long lastFlightNbr = logger.getLastFlightNbr();
@@ -611,7 +608,8 @@ void record() {
         currentMemaddress++;
         lastWriteTime = millis();
       }
-      delay(50);
+      // wait for 5 second
+      delay(5000);
     }
   }
 
@@ -867,6 +865,7 @@ void recordAltitude()
         logger.setFlightTimeData( diffTime);
         logger.setFlightAltitudeData(currAltitude);
         logger.setFlightTemperatureData((long) bmp.readTemperature());
+        logger.setFlightPressureData((long) bmp.readPressure());
         float bat = VOLT_DIVIDER * ((float)(analogRead(PB1) * 3300) / (float)4096000);
         logger.setFlightVoltageData((long) 100 * bat); 
         if ( (currentMemaddress + logger.getSizeOfFlightData())  > /*endAddress*/ 65536) {
