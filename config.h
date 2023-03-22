@@ -2,7 +2,7 @@
 #define _CONFIG_H
 
 #define MAJOR_VERSION 1
-#define MINOR_VERSION 5
+#define MINOR_VERSION 7
 #define CONFIG_START 32
 #define BOARD_FIRMWARE "AltiGPS"
 #define BAT_MIN_VOLTAGE 7.0
@@ -30,7 +30,7 @@ struct ConfigStruct {
   int beepingFrequency;  // this beeping frequency can be changed
   int nbrOfMeasuresForApogee; //how many measure to decide that apogee has been reached
   int endRecordAltitude;  // stop recording when landing define under which altitude we are not recording
-  int recordTemperature;  //decide if we want to record temperature
+  int telemetryType;  
   int superSonicDelay;   //nbr of ms during when we ignore any altitude measurements
   long connectionSpeed;   //altimeter connection baudrate
   int altimeterResolution; // BMP sensor resolution

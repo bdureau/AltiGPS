@@ -28,7 +28,10 @@ struct FlightDataStruct {
   long voltage;
   long latitude;
   long longitude;
- 
+  long GPSaltitude;
+  long nbrOfSat;
+  long GPSSpeed;
+  long SeaAltitude;
 };
 
 struct FlightConfigStruct {
@@ -68,6 +71,10 @@ public:
     void setFlightVoltageData(long voltage);
     void setFlightLatitudeData( long latitude);
     void setFlightLongitudeData( long longitude);
+    void setFlightGPSAltitudeData( long GPSaltitude);
+    void setFlightNbrOfSatData( long nbrOfSat);
+    void setFlightGPSSpeedData( long GPSSpeed);
+    void setFlightSeaAltitudeData( long SeaAltitude);
     
     long getFlightStart(int flightNbr);
     long getFlightStop(int flightNbr);

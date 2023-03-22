@@ -165,8 +165,18 @@ void logger_I2C_eeprom::setFlightLatitudeData( long latitude) {
 void logger_I2C_eeprom::setFlightLongitudeData( long longitude) {
   _FlightData.longitude = longitude;
 }
-//void logger_I2C_eeprom::setFlightRocketPos(char *w, char *x, char *y, char *z )
-
+void logger_I2C_eeprom::setFlightGPSAltitudeData( long GPSaltitude) {
+  _FlightData.GPSaltitude = GPSaltitude;
+}
+void logger_I2C_eeprom::setFlightNbrOfSatData( long nbrOfSat) {
+  _FlightData.nbrOfSat = nbrOfSat;
+}
+void logger_I2C_eeprom::setFlightGPSSpeedData( long GPSSpeed) {
+  _FlightData.GPSSpeed = GPSSpeed;
+}
+void logger_I2C_eeprom::setFlightSeaAltitudeData( long SeaAltitude) {
+  _FlightData.SeaAltitude = SeaAltitude;
+}
 
 long logger_I2C_eeprom::getFlightStart(int flightNbr)
 {
@@ -226,13 +236,31 @@ void logger_I2C_eeprom::printFlightData(int flightNbr)
       strcat(flightData, temp);
       sprintf(temp, "%i,", _FlightData.longitude );
       strcat(flightData, temp);
+      sprintf(temp, "%i,", _FlightData.GPSaltitude );
+      strcat(flightData, temp);
+      sprintf(temp, "%i,", _FlightData.nbrOfSat );
+      strcat(flightData, temp);
+      sprintf(temp, "%i,", _FlightData.GPSSpeed );
+      strcat(flightData, temp);
+      sprintf(temp, "%i,", _FlightData.SeaAltitude );
+      strcat(flightData, temp);
       unsigned int chk = msgChk(flightData, sizeof(flightData));
       sprintf(temp, "%i", chk);
       strcat(flightData, temp);
       strcat(flightData, ";\n");
       SerialCom.print("$");
       SerialCom.print(flightData);
-      delay(10);
+
+      //This will slow down the data
+      // this is for telemetry modules without enought buffer
+      if (config.telemetryType == 0) 
+        delay(0);
+      else if (config.telemetryType == 1)  
+        delay(20); 
+      else if (config.telemetryType == 2)
+        delay(50);
+      else if (config.telemetryType == 3)
+        delay(100);
     }
   }
 }

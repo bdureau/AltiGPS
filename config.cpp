@@ -26,7 +26,7 @@ void defaultConfig()
   //config.separationVelocity = 10;
   config.nbrOfMeasuresForApogee = 5;
   config.endRecordAltitude = 3; // stop recording when landing define under which altitude we are not recording
-  config.recordTemperature = 0; //decide if we want to record temperature
+  config.telemetryType = 0; 
   config.superSonicDelay = 0;
   config.connectionSpeed = 38400;
   config.altimeterResolution = 0; //0 to 4 ie: from low resolution to high
@@ -138,7 +138,7 @@ bool writeAltiConfigV2( char *p ) {
         config.endRecordAltitude = (int) commandVal;
         break;
       case 14:
-        config.recordTemperature = (int) commandVal;
+        config.telemetryType = (int) commandVal;
         break;
       case 15:
         config.superSonicDelay = (int) commandVal;
